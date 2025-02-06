@@ -5,7 +5,7 @@ RUN dnf config-manager setopt rpmfusion-nonfree-nvidia-driver.enabled=1 && \
     dnf config-manager setopt rpmfusion-nonfree-steam.enabled=1 && \
     dnf5 install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm && \
     dnf5 install -y \
-    gcc-c++ git-lfs akmods akmod-nvidia cockpit cockpit-bridge cockpit-machines \
+    gcc-c++ kernel-devel make gcc git-lfs akmods akmod-nvidia cockpit cockpit-bridge cockpit-machines \
     cockpit-networkmanager cockpit-ostree cockpit-podman kmod-nvidia \
     kwallet libguestfs-tools-c libvirt nvidia-container-toolkit oathtool \
     podman-compose podman-docker python-devel python3-pip qemu-system-arm \
