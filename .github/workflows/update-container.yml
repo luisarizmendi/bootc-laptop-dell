@@ -1,0 +1,53 @@
+name: Check Base Image Updates and Rebuild
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Runs daily at 6 AM UTC
+  workflow_dispatch:      # Allows manual triggering
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest base image digest
+        id: check_base_image
+        run: |
+          BASE_IMAGE="quay.io/fedora/fedora-kinoite:41"
+          LATEST_DIGEST=$(skopeo inspect docker://${BASE_IMAGE} | jq -r .Digest)
+          echo "LATEST_DIGEST=$LATEST_DIGEST" >> $GITHUB_ENV
+          echo "Latest Digest: $LATEST_DIGEST"
+
+      - name: Check if base image has changed
+        id: compare_digest
+        run: |
+          DIGEST_FILE="base_image_digest.txt"
+          if [ -f "$DIGEST_FILE" ] && grep -q "$LATEST_DIGEST" "$DIGEST_FILE"; then
+            echo "No update detected."
+            echo "SHOULD_BUILD=false" >> $GITHUB_ENV
+          else
+            echo "New base image update found!"
+            echo "$LATEST_DIGEST" > "$DIGEST_FILE"
+            echo "SHOULD_BUILD=true" >> $GITHUB_ENV
+          fi
+
+      - name: Commit updated digest
+        if: env.SHOULD_BUILD == 'true'
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add base_image_digest.txt
+          git commit -m "Update base image digest: $LATEST_DIGEST" || exit 0
+          git push
+
+      - name: Log in to registry
+        if: env.SHOULD_BUILD == 'true'
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login quay.io -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+
+      - name: Build and push container
+        if: env.SHOULD_BUILD == 'true'
+        run: |
+          docker build -t quay.io/luisarizmendi/laptop-dell:fedora-41 .
+          docker push quay.io/luisarizmendi/laptop-dell:fedora-41
